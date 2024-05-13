@@ -1,12 +1,16 @@
 package de.berlindroid.bingo
 
+import android.content.ContentValues
+import android.content.Context
+import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,14 +37,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.shreyaspatil.capturable.capturable
 import dev.shreyaspatil.capturable.controller.rememberCaptureController
 import kotlinx.coroutines.launch
-
+import java.io.OutputStream
 import java.math.BigInteger
 import java.security.MessageDigest
 
@@ -52,6 +56,23 @@ fun <T> List<List<T>>.nestedShuffle(): List<List<T>> = this.flatten().shuffled()
 fun String.md5(): String {
     val md = MessageDigest.getInstance("MD5")
     return BigInteger(1, md.digest(this.toByteArray())).toString(16).padStart(32, '0')
+}
+
+fun saveBitmapToDownloads(context: Context, bitmap: Bitmap, fileName: String) {
+    val resolver = context.contentResolver
+    val contentValues = ContentValues().apply {
+        put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+        put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+        put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/")
+    }
+
+    val uri: Uri? = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+    uri?.let {
+        val outputStream: OutputStream? = resolver.openOutputStream(it)
+        outputStream?.use { os ->
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, os)
+        }
+    }
 }
 
 @OptIn(ExperimentalComposeApi::class, ExperimentalComposeUiApi::class)
@@ -71,10 +92,11 @@ class MainActivity : ComponentActivity() {
                     )
                 )
             }
-            Column(
-                modifier = Modifier.capturable(captureController)
-            ) {
-                Content(bingoData)
+            Column {
+                Content(
+                    bingoData = bingoData,
+                    modifier = Modifier.capturable(captureController),
+                )
                 HorizontalDivider()
                 Row(
                     modifier = Modifier.fillMaxSize(),
@@ -87,16 +109,11 @@ class MainActivity : ComponentActivity() {
                     Button(onClick = {
                         scope.launch {
                             val bitmapAsync = captureController.captureAsync()
-//                            try {
                             val bitmap = bitmapAsync.await()
                             val fileName = "${
                                 bingoData.joinToString(";") { it.joinToString(",") }.md5()
                             }.png"
-                            Log.d("MainActivity", "File name: $fileName")
-                            // TODO save it
-//                            } catch (error: Throwable) {
-//                                // Error occurred, do something.
-//                            }
+                            saveBitmapToDownloads(this@MainActivity, bitmap.asAndroidBitmap(), fileName)
                         }
                     }) { Text("Save") }
                 }
@@ -124,10 +141,12 @@ fun Header() {
 @Composable
 fun Content(
     bingoData: List<List<String>>,
+    modifier: Modifier = Modifier,
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
+        modifier = modifier
+            .background(color = Color.White)
             .padding(32.dp)
             .aspectRatio(0.7070707f) // ISO216 A-series
     ) {
