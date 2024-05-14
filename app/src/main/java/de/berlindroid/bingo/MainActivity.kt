@@ -39,6 +39,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.shreyaspatil.capturable.capturable
@@ -48,7 +50,11 @@ import java.io.OutputStream
 import java.math.BigInteger
 import java.security.MessageDigest
 
-fun <T> List<List<T>>.nestedShuffle(): List<List<T>> = this.flatten().shuffled().chunked(this.size)
+val list = listOf(
+    "hidden"
+)
+
+fun randomList(): List<List<String>> = list.shuffled().take(25).chunked(5)
 
 /**
  * Source: https://stackoverflow.com/a/64171625/2384934
@@ -81,17 +87,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val captureController = rememberCaptureController()
-            var bingoData by remember {
-                mutableStateOf(
-                    listOf(
-                        listOf("A", "B", "C", "D", "E"),
-                        listOf("B", "B", "Android", "D", "E"),
-                        listOf("C", "B", "AI", "D", "E"),
-                        listOf("D", "B", "C", "D", "E"),
-                        listOf("E", "B", "C", "D", "E"),
-                    )
-                )
-            }
+            var bingoData by remember { mutableStateOf(randomList()) }
             Column {
                 Content(
                     bingoData = bingoData,
@@ -100,9 +96,9 @@ class MainActivity : ComponentActivity() {
                 HorizontalDivider()
                 Row(
                     modifier = Modifier.fillMaxSize(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Button(onClick = { bingoData = bingoData.nestedShuffle() }) {
+                    Button(onClick = { bingoData = randomList() }) {
                         Text("Randomize")
                     }
                     val scope = rememberCoroutineScope()
@@ -134,7 +130,17 @@ fun Header() {
             modifier = Modifier.height(128.dp)
         )
         Spacer(modifier = Modifier.padding(16.dp))
-        Text("Google I/O 2024 Bingo Card", fontSize = 24.sp)
+        Column {
+            Text("Google I/O 2024 Bingo Card", fontSize = 24.sp)
+            Spacer(modifier = Modifier.padding(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Text("Name: ")
+                Text("                                                                        ", textDecoration = TextDecoration.Underline)
+            }
+        }
     }
 }
 
@@ -152,9 +158,7 @@ fun Content(
     ) {
         Header()
         Spacer(modifier = Modifier.padding(16.dp))
-        Bingo(
-            data = bingoData,
-        )
+        Bingo(data = bingoData)
     }
 }
 
@@ -175,7 +179,9 @@ fun Bingo(
                     .aspectRatio(1f)
                     .padding(4.dp)
                     .background(color = Color.Gray.copy(alpha = 0.2f))
+                    .padding(8.dp)
                     .wrapContentSize(align = Alignment.Center),
+                textAlign = TextAlign.Center,
             )
         }
     }
